@@ -1,0 +1,4 @@
+model:
+  file: model_class.py
+connection:
+  port: 12345

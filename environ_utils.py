@@ -3,6 +3,10 @@ import torch
 import psutil
 
 
+def set_singleton_view_gpu(local_rank: int):
+    os.environ["CUDA_VISIBLE_DEVICES"] = f"{local_rank}"
+
+
 def is_rank_0():
     return 0 == int(os.getenv("RANK"))
 
