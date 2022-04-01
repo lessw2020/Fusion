@@ -63,6 +63,7 @@ def create_model(cfg=None):
 
 
 def build_model_core(rank):
+    """idea is to do the fsdp here"""
 
     currModel = Model_Class().to(rank)
 

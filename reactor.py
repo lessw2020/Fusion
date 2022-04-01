@@ -33,6 +33,10 @@ from torch.distributed.fsdp.wrap import (
 from datasets import load_dataset, load_metric
 from torch.utils.data import DataLoader
 
+import plasma  # training engine within reactor
+import build_optimizer
+import build_scheduler
+
 # from environ_utils import *
 
 from omegaconf import OmegaConf
@@ -218,12 +222,15 @@ def reactor_world_main():
     setup_world()
     model = setup_model()
     train_dataset, val_dataset = build_datasets()
+    optimizer = build_optimizer.build_optimizer(model)
+    lr_scheduler = build_scheduler.build_lr_scheduler(optimizer)
 
     teardown()
     return
 
 
 if __name__ == "__main__":
-    print(f"Starting Fusion Reactor...\n")
+    if 0 == int(os.getenv("RANK")):
+        print(f"Starting Fusion Reactor...\n")
 
     reactor_world_main()
