@@ -15,7 +15,7 @@ def create_model(cfg=None):
 
     # currFlop = calc_flop(cfg)
 
-    if is_rank_0:
+    if 0 == int(os.getenv("RANK")):
         print(f"visible devices = {torch.cuda.device_count()}", flush=True)
         # print(f"TerraFlop per iteration = {currFlop // 10**12}")
 
@@ -50,11 +50,13 @@ def create_model(cfg=None):
 
     # sync_all_devices()
     dist.barrier()
-
-    if is_rank_0:
+    rank = get_rank()
+    # print(f" current rank = {get_rank()}\n")
+    if rank == 0:
         print(f"Model built: \n {rank_model}")
 
-    print_memory_summary("After model init", "cuda:0")
+        print_memory_summary("After model init", "cuda:0")
+
     return rank_model
 
 

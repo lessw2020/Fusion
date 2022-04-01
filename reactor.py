@@ -33,9 +33,55 @@ from torch.distributed.fsdp.wrap import (
 from datasets import load_dataset, load_metric
 from torch.utils.data import DataLoader
 
-from environ_utils import *
+# from environ_utils import *
+
 from omegaconf import OmegaConf
 import model_builder
+
+
+# ---------------
+# Rank utils have to be inside the main file.  Importing will result in it living in
+# rank 0 land, and thus all 0 == int(os.getenv("RANK")) will return as True...
+
+
+def set_singleton_view_gpu(local_rank: int):
+    os.environ["CUDA_VISIBLE_DEVICES"] = f"{local_rank}"
+
+
+def is_rank_0():
+    if os.getenv("RANK") == 0:
+        return True
+    else:
+        return False
+
+    # return 0 == int(os.getenv("RANK"))
+
+
+def get_rank():
+    return int(os.getenv("RANK"))
+
+
+def get_world_size():
+    return int(os.getenv("WORLD_SIZE"))
+
+
+def get_local_rank():
+    """Get local rank - this is sometimes None"""
+    return int(os.getenv("LOCAL_RANK"))
+
+
+# memory
+def print_memory_summary(prefix, device):
+    if 0 == int(os.getenv("RANK")):
+        print(
+            f"{prefix}, GPU memory allocation: {torch.cuda.max_memory_allocated(device) // 1e9}GB\n "
+            f"CPU used memory percent: {psutil.virtual_memory().percent},\n "
+            f"CPU memory available: {psutil.virtual_memory().available // 1e9}GB,\n "
+        )
+        torch.cuda.reset_peak_memory_stats(device)
+
+
+# ---------------
 
 
 @dataclass
@@ -80,7 +126,7 @@ def setup_world(verbose=True):
 
     WORLD_SIZE = torch.cuda.device_count()
 
-    if verbose and is_rank_0:
+    if verbose and 0 == int(os.getenv("RANK")):
         print(f"--> Configuring World Environment")
 
     local_rank = get_local_rank()
@@ -89,11 +135,11 @@ def setup_world(verbose=True):
     # set device so each process only sees it's respective GPU
     set_singleton_view_gpu(local_rank)
 
-    rank = get_rank()
-    world_size = get_world_size()
-    if rank == 0:
+    if 0 == int(os.getenv("RANK")):
+        rank = get_rank()
+        world_size = get_world_size()
         print(f" rank = {rank} and world_size = {world_size}")
-        print(f"dist initialized? {torch.distributed.is_initialized()}")
+        # print(f"dist initialized? {torch.distributed.is_initialized()}")
         print(f"nccl here? {torch.distributed.is_nccl_available()}")
         print(
             f"launched from torch elastic? {torch.distributed.is_torchelastic_launched()}"
@@ -102,15 +148,15 @@ def setup_world(verbose=True):
     # init
     dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
-    if is_rank_0 and verbose:
-        print(f"World size is {world_size}")
-        print(f"PyTorch version {torch.__version__}")
+    if 0 == int(os.getenv("RANK")) and verbose:
+        print(f"World size is {world_size}\n")
+        print(f"PyTorch version {torch.__version__}\n")
         print(f"\n World environ setup complete \n")
 
 
 def setup_model():
     """core model section"""
-    rank = get_rank()
+    rank = int(os.getenv("RANK"))
 
     r0_device = torch.device("cuda:0")
 
@@ -118,7 +164,7 @@ def setup_model():
 
     """
     if cfg.cpu_offload:
-        if is_rank_0:
+        if 0 == int(os.getenv("RANK")):
             print(f"CPU Offloading enabled")
         cpu_offloading = True
 
@@ -137,7 +183,7 @@ def setup_model():
     # print(cfg)
 
     model = model_builder.create_model()  # todo - pass in model config file
-    if is_rank_0:
+    if 0 == int(os.getenv("RANK")):
         print(model)
         print("\n Model building complete ")
 
@@ -148,9 +194,12 @@ def save_model():
 
 def teardown():
     """clean up world before exiting"""
-    print(f"Succes! Wrapping up")
+    if 0 == int(os.getenv("RANK")):
+        print(f"Wrapping up...")
+
     dist.destroy_process_group()
-    if is_rank_0:
+
+    if 0 == int(os.getenv("RANK")):
         print("\nTraining finished\n")
 
 
@@ -163,8 +212,8 @@ def spawn_world(verbose=True):
 def reactor_world_main():
     """main processing function for each process"""
     setup_world()
-
     setup_model()
+
     teardown()
     return
 
