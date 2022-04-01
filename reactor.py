@@ -37,6 +37,7 @@ from torch.utils.data import DataLoader
 
 from omegaconf import OmegaConf
 import model_builder
+import dataset_builder
 
 
 # ---------------
@@ -68,17 +69,6 @@ def get_world_size():
 def get_local_rank():
     """Get local rank - this is sometimes None"""
     return int(os.getenv("LOCAL_RANK"))
-
-
-# memory
-def print_memory_summary(prefix, device):
-    if 0 == int(os.getenv("RANK")):
-        print(
-            f"{prefix}, GPU memory allocation: {torch.cuda.max_memory_allocated(device) // 1e9}GB\n "
-            f"CPU used memory percent: {psutil.virtual_memory().percent},\n "
-            f"CPU memory available: {psutil.virtual_memory().available // 1e9}GB,\n "
-        )
-        torch.cuda.reset_peak_memory_stats(device)
 
 
 # ---------------
@@ -135,9 +125,11 @@ def setup_world(verbose=True):
     # set device so each process only sees it's respective GPU
     set_singleton_view_gpu(local_rank)
 
+    rank = int(os.getenv("RANK"))
+    world_size = get_world_size()
+
     if 0 == int(os.getenv("RANK")):
-        rank = get_rank()
-        world_size = get_world_size()
+
         print(f" rank = {rank} and world_size = {world_size}")
         # print(f"dist initialized? {torch.distributed.is_initialized()}")
         print(f"nccl here? {torch.distributed.is_nccl_available()}")
@@ -184,8 +176,23 @@ def setup_model():
 
     model = model_builder.create_model()  # todo - pass in model config file
     if 0 == int(os.getenv("RANK")):
-        print(model)
+        # print(model)
         print("\n Model building complete ")
+
+    return model
+
+
+def build_datasets():
+    """ "build training and val dataloaders from dataset"""
+
+    dataloader_training = dataset_builder.build_training_dataloader()
+
+    dataloader_val = dataset_builder.build_val_dataloader()
+
+    if 0 == int(os.getenv("RANK")):
+        print(f"Dataloaders all built!\n")
+
+    return dataloader_training, dataloader_val
 
 
 def save_model():
@@ -203,30 +210,17 @@ def teardown():
         print("\nTraining finished\n")
 
 
-def spawn_world(verbose=True):
-    """spawn processes within the world"""
-
-    # mp.spawn(reactor_world_main(), args=(WORLD_SIZE), nprocs=WORLD_SIZE, join=True)
+# -----   Main ----------
 
 
 def reactor_world_main():
     """main processing function for each process"""
     setup_world()
-    setup_model()
+    model = setup_model()
+    train_dataset, val_dataset = build_datasets()
 
     teardown()
     return
-
-
-def main():
-    # load omegaconf
-    cfg = OmegaConf.load("mymodel.yaml")
-    # print(cfg.model.file)
-    # todo in progress here...
-    reactor_world_main()
-
-    # setup_model()
-    # train()
 
 
 if __name__ == "__main__":

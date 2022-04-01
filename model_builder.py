@@ -6,8 +6,9 @@ from model_class import Model_Class
 
 
 def create_model(cfg=None):
-    rank = get_rank()
-    world_size = get_world_size()
+    rank = int(os.getenv("RANK"))
+
+    world_size = int(os.getenv("WORLD_SIZE"))
 
     # setup has configured all processes to map to exclusive devices.
     for item in range(torch.cuda.device_count()):
@@ -50,7 +51,8 @@ def create_model(cfg=None):
 
     # sync_all_devices()
     dist.barrier()
-    rank = get_rank()
+    rank = int(os.getenv("RANK"))
+
     # print(f" current rank = {get_rank()}\n")
     if rank == 0:
         print(f"Model built: \n {rank_model}")
