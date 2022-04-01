@@ -5,7 +5,7 @@ import datetime
 from model_class import Model_Class
 
 
-def create_model(cfg):
+def create_model(cfg=None):
     rank = get_rank()
     world_size = get_world_size()
 
@@ -13,13 +13,13 @@ def create_model(cfg):
     for item in range(torch.cuda.device_count()):
         torch.cuda.synchronize(item)
 
-    currFlop = calc_flop(cfg)
+    # currFlop = calc_flop(cfg)
 
     if is_rank_0:
         print(f"visible devices = {torch.cuda.device_count()}", flush=True)
-        print(f"TerraFlop per iteration = {currFlop // 10**12}")
+        # print(f"TerraFlop per iteration = {currFlop // 10**12}")
 
-    if cfg.profile:
+    """if cfg.profile:
         init_start_event = torch.cuda.Event(enable_timing=True)
         init_end_event = torch.cuda.Event(enable_timing=True)
         before_forward_event = torch.cuda.Event(enable_timing=True)
@@ -41,18 +41,18 @@ def create_model(cfg):
     ) if cfg.profile else contextlib.nullcontext() as prof:
 
         now = datetime.now()
+"""
+    rank_model = build_model_core(rank)
 
-        rank_model = build_model_core(rank)
+    # if cfg.profile:
+    #    init_end_event.record()
+    # end = datetime.now()
 
-    if cfg.profile:
-        init_end_event.record()
-    end = datetime.now()
-
-    sync_all_devices()
+    # sync_all_devices()
     dist.barrier()
 
     if is_rank_0:
-        print(f"Model built: \n {model}")
+        print(f"Model built: \n {rank_model}")
 
     print_memory_summary("After model init", "cuda:0")
     return rank_model

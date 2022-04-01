@@ -74,11 +74,17 @@ def setup_world(verbose=True):
     # $os.environ["MASTER_ADDR"] = "localhost"
     # os.environ["MASTER_PORT"] = "12355"
 
+    global_seed = 2022  # todo put into config
+
+    torch.manual_seed(global_seed)
+
+    WORLD_SIZE = torch.cuda.device_count()
+
     if verbose and is_rank_0:
         print(f"--> Configuring World Environment")
 
     local_rank = get_local_rank()
-    print(f"local_rank = {local_rank}")
+    # print(f"local_rank = {local_rank}")
 
     # set device so each process only sees it's respective GPU
     set_singleton_view_gpu(local_rank)
@@ -99,7 +105,7 @@ def setup_world(verbose=True):
     if is_rank_0 and verbose:
         print(f"World size is {world_size}")
         print(f"PyTorch version {torch.__version__}")
-        print(f"World environ setup complete")
+        print(f"\n World environ setup complete \n")
 
 
 def setup_model():
@@ -110,6 +116,7 @@ def setup_model():
 
     cpu_offloading = False
 
+    """
     if cfg.cpu_offload:
         if is_rank_0:
             print(f"CPU Offloading enabled")
@@ -122,13 +129,17 @@ def setup_model():
         backward_prefetch = BackwardPrefetch.BACKWARD_POST
 
     ## Todo - wrap model
+"""
 
     # get model config
-    cfg = OmegaConf.load("mymodel.yaml")
+    # cfg = OmegaConf.load("mymodel.yaml")
 
-    print(cfg)
+    # print(cfg)
 
     model = model_builder.create_model()  # todo - pass in model config file
+    if is_rank_0:
+        print(model)
+        print("\n Model building complete ")
 
 
 def save_model():
@@ -146,20 +157,14 @@ def teardown():
 def spawn_world(verbose=True):
     """spawn processes within the world"""
 
-    if verbose:
-        print(f"spawning world...")
-    global_seed = 2022  # todo put into config
-
-    torch.manual_seed(global_seed)
-
-    WORLD_SIZE = torch.cuda.device_count()
-
     # mp.spawn(reactor_world_main(), args=(WORLD_SIZE), nprocs=WORLD_SIZE, join=True)
 
 
 def reactor_world_main():
     """main processing function for each process"""
     setup_world()
+
+    setup_model()
     teardown()
     return
 
@@ -169,7 +174,6 @@ def main():
     cfg = OmegaConf.load("mymodel.yaml")
     # print(cfg.model.file)
     # todo in progress here...
-    spawn_world()
     reactor_world_main()
 
     # setup_model()
@@ -179,4 +183,4 @@ def main():
 if __name__ == "__main__":
     print(f"Starting Fusion Reactor...\n")
 
-    main()
+    reactor_world_main()
