@@ -29,23 +29,20 @@ def create_model(cfg):
         after_zero_grad_event = torch.cuda.Event(enable_timing=True)
 
         init_start_event.record()
-    
-    
 
     with profile(
         activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
-    # record_shapes=True, # Causes seg fault in export_chrome_trace
-    # with_stack=True, # Causes seg fault with EFA
-    # with_flops=True, # Causes seg fault in export_chrome_trace
-    on_trace_ready=my_tensorboard_trace_handler(f"tb/{now.strftime('%Y_%m_%d_%H_%M_%S')}", rank, use_gzip=True)
-) if cfg.profile else contextlib.nullcontext() as prof:
-    now = datetime.now()
+        # record_shapes=True, # Causes seg fault in export_chrome_trace
+        # with_stack=True, # Causes seg fault with EFA
+        # with_flops=True, # Causes seg fault in export_chrome_trace
+        on_trace_ready=my_tensorboard_trace_handler(
+            f"tb/{now.strftime('%Y_%m_%d_%H_%M_%S')}", rank, use_gzip=True
+        ),
+    ) if cfg.profile else contextlib.nullcontext() as prof:
 
+        now = datetime.now()
 
-    rank_model = build_model_core(rank)
-
-
-    )
+        rank_model = build_model_core(rank)
 
     if cfg.profile:
         init_end_event.record()
@@ -54,10 +51,9 @@ def create_model(cfg):
     sync_all_devices()
     dist.barrier()
 
-
     if is_rank_0:
         print(f"Model built: \n {model}")
-    
+
     print_memory_summary("After model init", "cuda:0")
     return rank_model
 
@@ -67,12 +63,3 @@ def build_model_core(rank):
     currModel = Model_Class().to(rank)
 
     return currModel
-
-
-
-
-
-
-
-
-

@@ -5,12 +5,15 @@ from datetime import datetime
 import gc
 import time
 import os
+
 from posix import posix_spawn
 
 import psutil
 
 import torch
 import torch.distributed as dist
+import torch.multiprocessing as mp
+
 from torch.profiler import (
     profile,
     record_function,
@@ -68,6 +71,9 @@ class Reactor:
 def setup_world(verbose=True):
     """configure distributed world env"""
 
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "12355"
+
     if verbose and is_rank_0:
         print(f"--> Configuring World Environment")
 
@@ -97,7 +103,7 @@ def setup_model():
     cpu_offloading = False
 
     if cfg.cpu_offload:
-        if _is_rank_0:
+        if is_rank_0:
             print(f"CPU Offloading enabled")
         cpu_offloading = True
 
@@ -122,22 +128,46 @@ def save_model():
 
 
 def teardown(cfg):
-    if _is_rank_0:
+    """clean up world before exiting"""
+    dist.destroy_process_group()
+    if is_rank_0:
         print("\nTraining finished\n")
 
 
-def main():
-    # todo load omegaconf
-    # cfg =
+def spawn_world(verbose=True):
+    """spawn processes within the world"""
+
+    if verbose:
+        print(f"spawning world...")
+    global_seed = 2022  # todo put into config
+
+    torch.manual_seed(global_seed)
+
+    WORLD_SIZE = torch.cuda.device_count()
+
+    # mp.spawn(reactor_world_main(), args=(WORLD_SIZE), nprocs=WORLD_SIZE, join=True)
+
+
+def reactor_world_main():
+    """main processing function for each process"""
     setup_world()
-    setup_model()
-    train()
     teardown()
+    return
+
+
+def main():
+    # load omegaconf
+    cfg = OmegaConf.load("mymodel.yaml")
+    # print(cfg.model.file)
+    # todo in progress here...
+    spawn_world()
+    reactor_world_main()
+
+    # setup_model()
+    # train()
 
 
 if __name__ == "__main__":
-    print(f"Starting Fusion Reactor...")
-    cfg = OmegaConf.load("mymodel.yaml")
+    print(f"Starting Fusion Reactor...\n")
 
-    print(cfg)
     main()
