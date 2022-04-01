@@ -71,19 +71,27 @@ class Reactor:
 def setup_world(verbose=True):
     """configure distributed world env"""
 
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "12355"
+    # $os.environ["MASTER_ADDR"] = "localhost"
+    # os.environ["MASTER_PORT"] = "12355"
 
     if verbose and is_rank_0:
         print(f"--> Configuring World Environment")
 
     local_rank = get_local_rank()
+    print(f"local_rank = {local_rank}")
 
     # set device so each process only sees it's respective GPU
     set_singleton_view_gpu(local_rank)
 
     rank = get_rank()
     world_size = get_world_size()
+    if rank == 0:
+        print(f" rank = {rank} and world_size = {world_size}")
+        print(f"dist initialized? {torch.distributed.is_initialized()}")
+        print(f"nccl here? {torch.distributed.is_nccl_available()}")
+        print(
+            f"launched from torch elastic? {torch.distributed.is_torchelastic_launched()}"
+        )
 
     # init
     dist.init_process_group("nccl", rank=rank, world_size=world_size)
@@ -127,8 +135,9 @@ def save_model():
     """set barrier and save states todo"""
 
 
-def teardown(cfg):
+def teardown():
     """clean up world before exiting"""
+    print(f"Succes! Wrapping up")
     dist.destroy_process_group()
     if is_rank_0:
         print("\nTraining finished\n")

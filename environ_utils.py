@@ -12,16 +12,16 @@ def is_rank_0():
 
 
 def get_rank():
-    return os.getenv("RANK")
+    return int(os.getenv("RANK"))
 
 
 def get_world_size():
-    return os.getenv("WORLD_SIZE")
+    return int(os.getenv("WORLD_SIZE"))
 
 
 def get_local_rank():
     """Get local rank - this is sometimes None"""
-    return os.getenv("LOCAL_RANK")
+    return int(os.getenv("LOCAL_RANK"))
 
 
 # memory
