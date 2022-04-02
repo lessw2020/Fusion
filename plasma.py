@@ -25,6 +25,9 @@ def train_one_epoch(
 
     model.train()
 
+    if rank == 0:
+        print(f"--> Starting Epoch {epoch}")
+
     fsdp_loss = torch.zeros(2).to(rank)
 
     # if sampler:
@@ -47,7 +50,7 @@ def train_one_epoch(
         optimizer.step()
 
         fsdp_loss[0] += loss.item()
-        fsdp_loss[1] += len(data)
+        fsdp_loss[1] += len(samples)
 
         if profiler:
             profiler.step()
@@ -55,12 +58,10 @@ def train_one_epoch(
         # reduce op
         dist.reduce(fsdp_loss, 0, op=dist.ReduceOp.SUM)
 
-        if rank == 0:
-            print(
-                "Train Epoch: {} \tLoss: {:.6f}".format(
-                    epoch, fsdp_loss[0] / fsdp_loss[1]
-                )
-            )
+    if rank == 0:
+        print(
+            "Train Epoch: {} \tLoss: {:.6f}".format(epoch, fsdp_loss[0] / fsdp_loss[1])
+        )
 
 
 def val_one_epoch(
@@ -72,6 +73,9 @@ def val_one_epoch(
 ):
     """validation of model"""
     model.eval()
+    if rank == 0:
+        print(f"..validation set in process: \n")
+
     correct = 0
     fsdp_loss = torch.zeros(3).to(rank)
 
@@ -93,10 +97,10 @@ def val_one_epoch(
             dist.reduce(fsdp_loss, 0, op=dist.ReduceOp.SUM)
 
     if rank == 0:
-        test_loss = fsdp_loss[0] / fsdp_loss[2]
+        validation_loss = fsdp_loss[0] / fsdp_loss[2]
         print(
-            "Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n".format(
-                test_loss,
+            "Valdiation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n".format(
+                validation_loss,
                 int(fsdp_loss[1]),
                 int(fsdp_loss[2]),
                 100.0 * fsdp_loss[1] / fsdp_loss[2],

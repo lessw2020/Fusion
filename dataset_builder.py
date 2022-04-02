@@ -23,7 +23,7 @@ def build_val_transforms():
     if 0 == int(os.getenv("RANK")):
         print(f" --> using training transforms")
 
-    return build_train_transforms  # todo - this is only for mnist example
+    return build_train_transforms()  # todo - this is only for mnist example
 
 
 def build_training_dataloader(batch_size=4):

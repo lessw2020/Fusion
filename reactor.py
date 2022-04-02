@@ -183,7 +183,11 @@ def setup_model():
         # print(model)
         print("\n Model building complete ")
 
-    return model
+    sharded_model = FSDP(model)
+    if 0 == int(os.getenv("RANK")):
+        print(f"Sharded model = {sharded_model}")
+
+    return sharded_model
 
 
 def build_datasets():
@@ -221,9 +225,27 @@ def reactor_world_main():
     """main processing function for each process"""
     setup_world()
     model = setup_model()
-    train_dataset, val_dataset = build_datasets()
+    dataloader_train, dataloader_val = build_datasets()
     optimizer = build_optimizer.build_optimizer(model)
     lr_scheduler = build_scheduler.build_lr_scheduler(optimizer)
+
+    # one training loop
+    rank = int(os.getenv("RANK"))
+    world_size = int(os.getenv("WORLD_SIZE"))
+    device = torch.cuda.set_device(rank)
+
+    plasma.train_one_epoch(
+        rank,
+        world_size,
+        model,
+        dataloader_train,
+        optimizer,
+        device,
+        0,
+        max_norm=1.0,
+    )
+
+    plasma.val_one_epoch(rank, world_size, model, dataloader_val)
 
     teardown()
     return
