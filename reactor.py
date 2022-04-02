@@ -1,7 +1,7 @@
 # core engine for fusing model with data and updates
 from dataclasses import dataclass
 from pathlib import Path
-from datetime import datetime
+import datetime
 import gc
 import time
 import os
@@ -42,6 +42,8 @@ import build_scheduler
 from omegaconf import OmegaConf
 import model_builder
 import dataset_builder
+
+import tqdm
 
 
 # ---------------
@@ -224,8 +226,11 @@ def teardown():
 def reactor_world_main():
     """main processing function for each process"""
     setup_world()
+    # important - models must be placed onto device, then sharded
     model = setup_model()
+
     dataloader_train, dataloader_val = build_datasets()
+
     optimizer = build_optimizer.build_optimizer(model)
     lr_scheduler = build_scheduler.build_lr_scheduler(optimizer)
 
@@ -233,6 +238,11 @@ def reactor_world_main():
     rank = int(os.getenv("RANK"))
     world_size = int(os.getenv("WORLD_SIZE"))
     device = torch.cuda.set_device(rank)
+
+    num_epochs = 2
+    if 0 == int(os.getenv("RANK")):
+        print("Start training")
+        start_time = time.time()
 
     plasma.train_one_epoch(
         rank,
@@ -246,6 +256,12 @@ def reactor_world_main():
     )
 
     plasma.val_one_epoch(rank, world_size, model, dataloader_val)
+
+    # end training
+    if 0 == int(os.getenv("RANK")):
+        total_time = time.time() - start_time
+        total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+        print(f"Training time {total_time_str}")
 
     teardown()
     return
