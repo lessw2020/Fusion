@@ -44,6 +44,9 @@ import model_builder
 import dataset_builder
 
 import tqdm
+import colorama as cr
+
+cr.init(autoreset=True)  # init console
 
 
 # ---------------
@@ -240,28 +243,37 @@ def reactor_world_main():
     device = torch.cuda.set_device(rank)
 
     num_epochs = 2
+
     if 0 == int(os.getenv("RANK")):
         print("Start training")
         start_time = time.time()
 
-    plasma.train_one_epoch(
-        rank,
-        world_size,
-        model,
-        dataloader_train,
-        optimizer,
-        device,
-        0,
-        max_norm=1.0,
-    )
+    # for rzero_epoch in tqdm.tqdm(range(num_epochs)):
+    for curr_epoch in range(num_epochs):
 
-    plasma.val_one_epoch(rank, world_size, model, dataloader_val)
+        plasma.train_one_epoch(
+            rank,
+            world_size,
+            model,
+            dataloader_train,
+            optimizer,
+            device,
+            curr_epoch,
+            max_norm=1.0,
+        )
+
+        # todo - step lr, step profiler?
+
+        plasma.val_one_epoch(rank, world_size, model, dataloader_val)
+
+        if 0 == int(os.getenv("RANK")):
+            print(cr.Fore.GREEN + f"epoch {curr_epoch} completed ")
 
     # end training
     if 0 == int(os.getenv("RANK")):
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-        print(f"Training time {total_time_str}")
+        print(cr.Fore.RED + f"Training time {total_time_str}")
 
     teardown()
     return
