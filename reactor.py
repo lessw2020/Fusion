@@ -30,7 +30,9 @@ from torch.distributed.fsdp.wrap import (
     enable_wrap,
     wrap,
 )
-from datasets import load_dataset, load_metric
+# from datasets import load_dataset, load_metric
+from nlp import load_dataset
+
 from torch.utils.data import DataLoader
 
 import plasma  # training engine within reactor
