@@ -99,7 +99,7 @@ def val_one_epoch(
     if rank == 0:
         validation_loss = fsdp_loss[0] / fsdp_loss[2]
         print(
-            "Valdiation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n".format(
+            "Validation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n".format(
                 validation_loss,
                 int(fsdp_loss[1]),
                 int(fsdp_loss[2]),

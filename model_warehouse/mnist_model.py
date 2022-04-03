@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import os
 
 
-class Model_Class(nn.Module):
+class Mnist_Model(nn.Module):
     def __init__(self):
         rank = os.getenv("RANK")
         print(f"--> Init called for model with rank {rank}")

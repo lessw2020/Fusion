@@ -141,9 +141,9 @@ def setup_world(verbose=True):
 
         print(f" rank = {rank} and world_size = {world_size}")
         # print(f"dist initialized? {torch.distributed.is_initialized()}")
-        print(f"nccl here? {torch.distributed.is_nccl_available()}")
+        print(f"nccl status = {torch.distributed.is_nccl_available()}")
         print(
-            f"launched from torch elastic? {torch.distributed.is_torchelastic_launched()}"
+            f"launched from torch elastic =  {torch.distributed.is_torchelastic_launched()}"
         )
 
     # init
@@ -182,8 +182,12 @@ def setup_model():
     # cfg = OmegaConf.load("mymodel.yaml")
 
     # print(cfg)
+    model_filename = "mnist_model"  # no .py on end - todo - parse and check
+    model_class = "Mnist_Model"
 
-    model = model_builder.create_model()  # todo - pass in model config file
+    model = model_builder.create_model(
+        model_filename, model_class
+    )  # todo - pass in model config file
     if 0 == int(os.getenv("RANK")):
         # print(model)
         print("\n Model building complete ")
@@ -220,7 +224,7 @@ def teardown():
     dist.destroy_process_group()
 
     if 0 == int(os.getenv("RANK")):
-        print("\nTraining finished\n")
+        print(cr.Fore.LIGHTBLUE_EX + "\nTraining finished\n")
 
 
 # -----   Main ----------
@@ -245,7 +249,7 @@ def reactor_world_main():
     num_epochs = 2
 
     if 0 == int(os.getenv("RANK")):
-        print("Start training")
+        print(cr.Fore.LIGHTBLUE_EX + "Start training")
         start_time = time.time()
 
     # for rzero_epoch in tqdm.tqdm(range(num_epochs)):
@@ -273,7 +277,7 @@ def reactor_world_main():
     if 0 == int(os.getenv("RANK")):
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-        print(cr.Fore.RED + f"Training time {total_time_str}")
+        print(cr.Fore.LIGHTGREEN_EX + f"Training time {total_time_str}")
 
     teardown()
     return

@@ -2,10 +2,15 @@ from environ_utils import *
 import torch.distributed as dist
 import datetime
 
-from model_class import Model_Class
+# from model_class import Model_Class
+
+import importlib
+import sys
+
+sys.path.append("./model_warehouse")
 
 
-def create_model(cfg=None):
+def create_model(model_filename=None, model_class=None, cfg=None):
     rank = int(os.getenv("RANK"))
 
     world_size = int(os.getenv("WORLD_SIZE"))
@@ -43,7 +48,7 @@ def create_model(cfg=None):
 
         now = datetime.now()
 """
-    rank_model = build_model_core(rank)
+    rank_model = build_model_core(rank, model_filename, model_class)
 
     # if cfg.profile:
     #    init_end_event.record()
@@ -62,9 +67,19 @@ def create_model(cfg=None):
     return rank_model
 
 
-def build_model_core(rank):
+def build_model_core(rank, model_filename, model_class):
     """idea is to do the fsdp here"""
 
-    currModel = Model_Class().to(rank)
+    # currModel = Model_Class().to(rank)
+    print(f"loading {model_class}")
+    # load_path = "./model_warehouse"+model_file
+    module = None
+    module = __import__(model_filename)
+    if module is None:
+        print(f"Unable to load user model file...aborting")
+        RaiseValueError("unable to load model file")
+    actual_class = getattr(module, model_class)
+
+    currModel = actual_class().to(rank)
 
     return currModel
