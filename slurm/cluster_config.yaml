@@ -6,6 +6,7 @@ HeadNode:
   Networking:
     # MODIFY THIS TO THE VALUE OF SUBNET ID
     SubnetId: YOUR_SUBNET_ID
+    ElasticIp: true
   Ssh:
     # MODIFY THIS TO THE VALUE OF $AWS_KEY_NAME
     KeyName: AWS_KEY_NAME
@@ -31,6 +32,7 @@ Scheduling:
         SubnetIds:
           # MODIFY THIS TO THE VALUE OF SUBNET ID
           - YOUR_SUBNET_ID
+        AssignPublicIp: true
 Monitoring:
   DetailedMonitoring: true
   Logs:
