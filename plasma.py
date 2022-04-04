@@ -1,11 +1,13 @@
 # handles training epochs, eval and prediction
 
+from turtle import color
 import torch
 from typing import Iterable
 
 import torch.distributed as dist
 
 import torch.nn.functional as F
+import tqdm
 
 
 def train_one_epoch(
@@ -24,9 +26,13 @@ def train_one_epoch(
     """train one epoch"""
 
     model.train()
+    inner_pbar = None
 
     if rank == 0:
         print(f"--> Starting Epoch {epoch}")
+        inner_pbar = tqdm.tqdm(
+            range(len(train_data_loader)), colour="blue", desc="r0 Training Epoch"
+        )
 
     fsdp_loss = torch.zeros(2).to(rank)
 
@@ -58,7 +64,11 @@ def train_one_epoch(
         # reduce op
         dist.reduce(fsdp_loss, 0, op=dist.ReduceOp.SUM)
 
+        if rank == 0:
+            inner_pbar.update(1)
+
     if rank == 0:
+        inner_pbar.close()  # final update
         print(
             "Train Epoch: {} \tLoss: {:.6f}".format(epoch, fsdp_loss[0] / fsdp_loss[1])
         )

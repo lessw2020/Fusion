@@ -30,6 +30,7 @@ from torch.distributed.fsdp.wrap import (
     enable_wrap,
     wrap,
 )
+
 # from datasets import load_dataset, load_metric
 from nlp import load_dataset
 
@@ -250,9 +251,12 @@ def reactor_world_main():
 
     num_epochs = 2
 
+    pbar = None  # try to host single pbar inside of rank 0 process
+
     if 0 == int(os.getenv("RANK")):
         print(cr.Fore.LIGHTBLUE_EX + "Start training")
         start_time = time.time()
+        # pbar = tqdm.tqdm(range(num_epochs))
 
     # for rzero_epoch in tqdm.tqdm(range(num_epochs)):
     for curr_epoch in range(num_epochs):
@@ -274,6 +278,7 @@ def reactor_world_main():
 
         if 0 == int(os.getenv("RANK")):
             print(cr.Fore.GREEN + f"epoch {curr_epoch} completed ")
+            # pbar.update(1)
 
     # end training
     if 0 == int(os.getenv("RANK")):

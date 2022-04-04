@@ -2,3 +2,4 @@ torch>=1.11
 tqdm
 tensorboard
 rich
+nlp
