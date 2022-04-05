@@ -316,6 +316,7 @@ class WikiHow(FusionConfig):
     num_test_samples: int = 5577
     max_input_length = 512
     max_output_length = 150
+    num_workers = 4
 
 
 @dataclass
@@ -324,7 +325,7 @@ class Mnist(FusionConfig):
     description: str = "simple mnist CNN to demo FSDP"
     train_transform: str = "mnist_train"
     val_transform: str = "mnist_val"
-    batchsize: int = 10
+    batch_size: int = 10
 
 
 @dataclass

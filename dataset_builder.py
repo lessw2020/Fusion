@@ -102,32 +102,68 @@ def build_training_dataloader(cfg=None):
             batch_size=cfg.batch_size,
             drop_last=True,
             shuffle=True,
-            num_workers=4,
+            num_workers=cfg.num_workers,
         )
-    print(f"Dataloader build for wikihow!")
-    print(len(dataloader_training))
-    print("8888 ------------ 888888 ")
+    # if 0 == rank:
+    print(f"\nTraining Dataloader built for {cfg.project}!")
+    print(f"Total Training samples = {len(dataloader_training)}\n")
 
     return dataloader_training
 
 
-def build_val_dataloader(batch_size=4):
+def build_val_dataloader(cfg=None):
     """validation dataset and dataloader"""
     rank = int(os.getenv("RANK"))
     world_size = int(os.getenv("WORLD_SIZE"))
 
-    val_transforms = build_val_transforms()
+    val_transforms = build_val_transforms(cfg)
 
-    dataset_val = datasets.MNIST("./data", train=False, transform=val_transforms)
+    dataset_val = None
+    dataloader_val = None
 
-    sampler_val = DistributedSampler(dataset_val, rank=rank, num_replicas=world_size)
+    if cfg.project == "mnist":
 
-    val_kwargs = {"batch_size": batch_size, "sampler": sampler_val}
+        dataset_val = datasets.MNIST("./data", train=False, transform=val_transforms)
 
-    cuda_kwargs = {"num_workers": 2, "pin_memory": True, "shuffle": False}
+        sampler_val = DistributedSampler(
+            dataset_val, rank=rank, num_replicas=world_size
+        )
 
-    val_kwargs.update(cuda_kwargs)
+        val_kwargs = {"batch_size": cfg.batch_size, "sampler": sampler_val}
 
-    dataloader_val = torch.utils.data.DataLoader(dataset_val, **val_kwargs)
+        cuda_kwargs = {"num_workers": 2, "pin_memory": True, "shuffle": False}
+
+        val_kwargs.update(cuda_kwargs)
+
+        dataloader_val = torch.utils.data.DataLoader(dataset_val, **val_kwargs)
+
+    elif cfg.project == "wikihow":
+        tokenizer = None
+        from projects.wikihow.dataset import wikihow
+
+        if cfg.tokenizer == "t5":
+            tokenizer = T5Tokenizer.from_pretrained(cfg.model_name)
+        num_samples = (
+            cfg.num_val_samples
+        )  # todo - this is from inspecting the dataset...needs to be more dynamic
+
+        val_dataset = wikihow(
+            tokenizer=tokenizer,
+            type_path="validation",
+            num_samples=num_samples,
+            input_length=cfg.max_input_length,
+            output_length=cfg.max_output_length,
+        )
+
+        dataloader_val = DataLoader(
+            val_dataset,
+            batch_size=cfg.batch_size,
+            drop_last=True,
+            shuffle=True,
+            num_workers=cfg.num_workers,
+        )
+    # if 0 == rank:
+    print(f"\nTraining Dataloader built for {cfg.project}!")
+    print(f"Total validation samples = {len(dataloader_val)}\n")
 
     return dataloader_val
