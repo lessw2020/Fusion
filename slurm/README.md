@@ -79,7 +79,7 @@ set up a shared file system as SLURM cluster uses it to make sure all files are 
 ## ssh to head node
 
 ```
-pcluster ssh --cluster-name cluster -i lab-your-key
+pcluster ssh --cluster-name cluster -i your-key_pair
 
 ```
 
