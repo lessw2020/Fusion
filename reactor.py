@@ -308,6 +308,7 @@ class FusionConfig:
 @dataclass
 class WikiHow(FusionConfig):
     project: str = "wikihow"
+    type: str = "finetuner"
     description: str = "text summarization with T5 and FSDP"
     tokenizer = "t5"
     model_name: str = "t5-small"
