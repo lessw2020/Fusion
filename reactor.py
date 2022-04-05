@@ -209,7 +209,7 @@ def build_datasets(cfg=None):
 
     dataloader_training = dataset_builder.build_training_dataloader(cfg)
 
-    dataloader_val = dataset_builder.build_val_dataloader()
+    dataloader_val = dataset_builder.build_val_dataloader(cfg)
 
     if 0 == int(os.getenv("RANK")):
         print(f"Dataloaders all built!\n")
@@ -305,17 +305,32 @@ class FusionConfig:
 @dataclass
 class WikiHow(FusionConfig):
     project: str = "wikihow"
-    batchsize: int = 10
-    train_transform: str = "mnist_train"
-    val_transform: str = "mnist_val"
+    description: str = "text summarization with T5 and FSDP"
+    tokenizer = "t5"
+    model_name: str = "t5-small"
+    train_transform: str = "in_dataset"
+    val_transform: str = "in_dataset"
+    batch_size: int = 4
+    num_train_samples: int = 157252
+    num_val_samples: int = 5599
+    num_test_samples: int = 5577
+    max_input_length = 512
+    max_output_length = 150
 
 
 @dataclass
 class Mnist(FusionConfig):
     project: str = "mnist"
+    description: str = "simple mnist CNN to demo FSDP"
     train_transform: str = "mnist_train"
     val_transform: str = "mnist_val"
     batchsize: int = 10
+
+
+@dataclass
+class MedSchool(FusionConfig):
+    project: str = "medschool"
+    description: str = "MedQA with T5 transformer"
 
 
 if __name__ == "__main__":
