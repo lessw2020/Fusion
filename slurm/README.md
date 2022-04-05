@@ -62,12 +62,26 @@ pcluster create-cluster \
 or alternatively is you run the command blow, configure wizard prompts you for all of the information required to create a cluster.
 ```
  pcluster configure --config cluster-config.yaml
+ 
+```
+once config file has been created, now it can be used to create the cluster
+
+```
+pcluster create-cluster --cluster-configuration config.yaml --cluster-name cluster-name
+
 ```
 
 ## Shared file system 
 set up a shared file system as SLURM cluster uses it to make sure all files are synchronized between compute nodes.
 
 ### copy data from S3 to shared file system
+
+## ssh to head node
+
+```
+pcluster ssh --cluster-name cluster -i your-key_pair
+
+```
 
 ## run the job
 sbatch ./slurm/slurm_sbatch_run.sh
