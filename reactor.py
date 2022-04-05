@@ -9,6 +9,7 @@ import os
 from posix import posix_spawn
 
 import psutil
+from sympy import FU
 
 import torch
 import torch.distributed as dist
@@ -150,7 +151,8 @@ def setup_world(verbose=True):
         )
 
     # init
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+    print(f"Todo - blocking dist init for debugging...remove this!")
+    # dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
     if 0 == int(os.getenv("RANK")) and verbose:
         print(f"World size is {world_size}\n")
@@ -202,10 +204,10 @@ def setup_model():
     return sharded_model
 
 
-def build_datasets():
+def build_datasets(cfg=None):
     """ "build training and val dataloaders from dataset"""
 
-    dataloader_training = dataset_builder.build_training_dataloader()
+    dataloader_training = dataset_builder.build_training_dataloader(cfg)
 
     dataloader_val = dataset_builder.build_val_dataloader()
 
@@ -233,13 +235,18 @@ def teardown():
 # -----   Main ----------
 
 
-def reactor_world_main():
+def reactor_world_main(cfg=None):
     """main processing function for each process"""
+
     setup_world()
     # important - models must be placed onto device, then sharded
-    model = setup_model()
 
-    dataloader_train, dataloader_val = build_datasets()
+    dataloader_train, dataloader_val = build_datasets(cfg)
+
+    print("Todo - remove this..aborting for now as just making dataset")
+    return
+
+    model = setup_model()
 
     optimizer = build_optimizer.build_optimizer(model)
     lr_scheduler = build_scheduler.build_lr_scheduler(optimizer)
@@ -290,8 +297,32 @@ def reactor_world_main():
     return
 
 
+@dataclass
+class FusionConfig:
+    epochs: int = 2
+
+
+@dataclass
+class WikiHow(FusionConfig):
+    project: str = "wikihow"
+    batchsize: int = 10
+    train_transform: str = "mnist_train"
+    val_transform: str = "mnist_val"
+
+
+@dataclass
+class Mnist(FusionConfig):
+    project: str = "mnist"
+    train_transform: str = "mnist_train"
+    val_transform: str = "mnist_val"
+    batchsize: int = 10
+
+
 if __name__ == "__main__":
     if 0 == int(os.getenv("RANK")):
         print(f"Starting Fusion Reactor...\n")
 
-    reactor_world_main()
+    cfg = WikiHow()
+    print(f"\nActive Project = {cfg.project}\n")
+
+    reactor_world_main(cfg)
