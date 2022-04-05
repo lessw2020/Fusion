@@ -40,6 +40,7 @@ from torch.utils.data import DataLoader
 import plasma  # training engine within reactor
 import build_optimizer
 import build_scheduler
+import build_criterion
 
 # from environ_utils import *
 
@@ -243,6 +244,8 @@ def reactor_world_main(cfg=None):
 
     dataloader_train, dataloader_val = build_datasets(cfg)
 
+    loss_metric = build_criterion.get_criterion(cfg)
+
     print("Todo - remove this..aborting for now as just making dataset")
     return
 
@@ -317,6 +320,7 @@ class WikiHow(FusionConfig):
     max_input_length = 512
     max_output_length = 150
     num_workers = 4
+    criterion = "rouge"
 
 
 @dataclass

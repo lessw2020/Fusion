@@ -3,3 +3,4 @@ tqdm
 tensorboard
 rich
 nlp
+rouge_score
