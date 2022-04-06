@@ -9,15 +9,18 @@ import sys
 
 sys.path.append("./model_warehouse")
 
+import finetuners
 
-def create_model(model_filename=None, model_class=None, cfg=None):
+
+def create_model(cfg=None):
     rank = int(os.getenv("RANK"))
 
     world_size = int(os.getenv("WORLD_SIZE"))
 
     # setup has configured all processes to map to exclusive devices.
-    for item in range(torch.cuda.device_count()):
-        torch.cuda.synchronize(item)
+    if cfg.distributed:
+        for item in range(torch.cuda.device_count()):
+            torch.cuda.synchronize(item)
 
     # currFlop = calc_flop(cfg)
 
@@ -48,15 +51,16 @@ def create_model(model_filename=None, model_class=None, cfg=None):
 
         now = datetime.now()
 """
-    rank_model = build_model_core(rank, model_filename, model_class)
+    rank_model = build_model_core(rank, cfg)
 
     # if cfg.profile:
     #    init_end_event.record()
     # end = datetime.now()
 
     # sync_all_devices()
-    dist.barrier()
-    rank = int(os.getenv("RANK"))
+    if cfg.distributed:
+        dist.barrier()
+        rank = int(os.getenv("RANK"))
 
     # print(f" current rank = {get_rank()}\n")
     if rank == 0:
@@ -67,19 +71,29 @@ def create_model(model_filename=None, model_class=None, cfg=None):
     return rank_model
 
 
-def build_model_core(rank, model_filename, model_class):
+def build_model_core(rank, cfg):
     """idea is to do the fsdp here"""
 
     # currModel = Model_Class().to(rank)
-    print(f"loading {model_class}")
-    # load_path = "./model_warehouse"+model_file
-    module = None
-    module = __import__(model_filename)
-    if module is None:
-        print(f"Unable to load user model file...aborting")
-        RaiseValueError("unable to load model file")
-    actual_class = getattr(module, model_class)
+    print(cfg.type)
 
-    currModel = actual_class().to(rank)
+    if cfg.type == "finetuner":
+        print(f"--> Loading finetuner model class")
+        tunerModel = finetuners.get_finetuner(cfg)
+        tunerModel.to(rank)
 
-    return currModel
+        return tunerModel
+
+    else:
+        print(f"loading {cfg.model_class}")
+        # load_path = "./model_warehouse"+model_file
+        module = None
+        module = __import__(cfg.model_filename)
+        if module is None:
+            print(f"Unable to load user model file...aborting")
+            RaiseValueError("unable to load model file")
+        actual_class = getattr(module, cfg.model_class)
+
+        currModel = actual_class().to(rank)
+
+        return currModel

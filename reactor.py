@@ -161,7 +161,7 @@ def setup_world(verbose=True):
         print(f"\n World environ setup complete \n")
 
 
-def setup_model():
+def setup_model(cfg=None):
     """core model section"""
     rank = int(os.getenv("RANK"))
 
@@ -188,21 +188,23 @@ def setup_model():
     # cfg = OmegaConf.load("mymodel.yaml")
 
     # print(cfg)
-    model_filename = "mnist_model"  # no .py on end - todo - parse and check
-    model_class = "Mnist_Model"
+    # model_filename = "mnist_model"  # no .py on end - todo - parse and check
+    # model_class = "Mnist_Model"
 
-    model = model_builder.create_model(
-        model_filename, model_class
-    )  # todo - pass in model config file
+    model = model_builder.create_model(cfg)
+
+    print(f"Model built --> review:\n {model}")
+
     if 0 == int(os.getenv("RANK")):
         # print(model)
         print("\n Model building complete ")
 
-    sharded_model = FSDP(model)
-    if 0 == int(os.getenv("RANK")):
-        print(f"Sharded model = {sharded_model}")
+    if cfg.fsdp:
+        sharded_model = FSDP(model)
+        if 0 == int(os.getenv("RANK")):
+            print(f"Sharded model = {sharded_model}")
 
-    return sharded_model
+    return sharded_model if cfg.fsdp else model
 
 
 def build_datasets(cfg=None):
@@ -242,14 +244,14 @@ def reactor_world_main(cfg=None):
     setup_world()
     # important - models must be placed onto device, then sharded
 
-    dataloader_train, dataloader_val = build_datasets(cfg)
+    # dataloader_train, dataloader_val = build_datasets(cfg)
 
-    loss_metric = build_criterion.get_criterion(cfg)
+    # loss_metric = build_criterion.get_criterion(cfg)
+    print(f"todo - skipping dataset builder for debugging...turn on before training")
+    model = setup_model(cfg)
 
-    print("Todo - remove this..aborting for now as just making dataset")
+    print("Todo - remove this..aborting for now as just making dataset and model")
     return
-
-    model = setup_model()
 
     optimizer = build_optimizer.build_optimizer(model)
     lr_scheduler = build_scheduler.build_lr_scheduler(optimizer)
@@ -310,6 +312,8 @@ class WikiHow(FusionConfig):
     project: str = "wikihow"
     type: str = "finetuner"
     model_type: str = "t5"
+    distributed: bool = False
+    fsdp: bool = False
     description: str = "text summarization with T5 and FSDP"
     tokenizer = "t5"
     model_name: str = "t5-small"
@@ -328,10 +332,13 @@ class WikiHow(FusionConfig):
 @dataclass
 class Mnist(FusionConfig):
     project: str = "mnist"
+    type: str = "base"
     description: str = "simple mnist CNN to demo FSDP"
     train_transform: str = "mnist_train"
     val_transform: str = "mnist_val"
     batch_size: int = 10
+    model_class: str = "Mnist_Model"
+    model_filename: str = "mnist_model"
 
 
 @dataclass
