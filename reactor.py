@@ -264,7 +264,8 @@ def reactor_world_main(cfg=None):
     world_size = int(os.getenv("WORLD_SIZE"))
     device = torch.cuda.set_device(rank)
 
-    num_epochs = 2
+    num_epochs = 1
+    print(f"num_epochs 0 to force immediate val step...remove")
 
     pbar = None  # try to host single pbar inside of rank 0 process
 
@@ -286,16 +287,15 @@ def reactor_world_main(cfg=None):
             curr_epoch,
             max_norm=1.0,
         )
-    # print("Todo - remove this..aborting after one epoch for debugging")
-    # return
-    # todo - step lr, step profiler?
-    print("todo - val is not enabled...fix this when ready")
-    if False:
+        # print("Todo - remove this..aborting after one epoch for debugging")
+        # return
+        # todo - step lr, step profiler?
+
         plasma.val_one_epoch(rank, world_size, model, dataloader_val)
 
         if 0 == int(os.getenv("RANK")):
             print(cr.Fore.GREEN + f"epoch {curr_epoch} completed ")
-            # pbar.update(1)
+        # pbar.update(1)
 
     # end training
     if 0 == int(os.getenv("RANK")):
@@ -303,7 +303,10 @@ def reactor_world_main(cfg=None):
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
         print(cr.Fore.LIGHTGREEN_EX + f"Training time {total_time_str}")
 
-    teardown()
+    # teardown()
+    print(
+        f"warning - teardown() not active while we are in single gpu debug...remove this"
+    )
     return
 
 

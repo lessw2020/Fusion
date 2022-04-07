@@ -60,7 +60,7 @@ def train_one_epoch(
 
             loss = None
 
-            loss = iPointer.model_step(batch, rank)
+            loss = iPointer.model_step(rank, batch)
 
             optimizer.step()
 
@@ -129,37 +129,59 @@ def val_one_epoch(
     criterion=None,
 ):
     """validation of model"""
+    is_finetuner = False
+    iPointer = model  # class instance pointer...for fine tuner we will be shifting 'model' to the internal nn.Model
+
+    if isinstance(model, FineTunerBase):
+        is_finetuner = True
+        model = iPointer.wrapped_model
+
     model.eval()
+
     if rank == 0:
         print(f"..validation set in process: \n")
+    if is_finetuner:
+        # validation is really generation step...
+        with torch.no_grad():
+            print(f"in val fine tuner step")
+            for batch_idx, batch in enumerate(val_data_loader):
 
-    correct = 0
-    fsdp_loss = torch.zeros(3).to(rank)
+                # batch = dict_keys(['source_ids', 'source_mask', 'target_ids', 'target_mask'])
+                iPointer.generative_step(rank, batch)
 
-    with torch.no_grad():
-        for samples, target in val_data_loader:
-            samples = samples.to(rank)
-            target = target.to(rank)
+                if batch_idx > 3:
+                    print(f"aborting after 3 mini in val step...remove")
+                    break
 
-            output = model(samples)
+    else:
 
-            fsdp_loss[0] += F.nll_loss(
-                output, target, reduction="sum"
-            ).item()  # sum up batch loss
-            pred = output.argmax(
-                dim=1, keepdim=True
-            )  # get the index of the max log-probability
-            fsdp_loss[1] += pred.eq(target.view_as(pred)).sum().item()
-            fsdp_loss[2] += len(samples)
-            dist.reduce(fsdp_loss, 0, op=dist.ReduceOp.SUM)
+        correct = 0
+        fsdp_loss = torch.zeros(3).to(rank)
 
-    if rank == 0:
-        validation_loss = fsdp_loss[0] / fsdp_loss[2]
-        print(
-            "Validation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n".format(
-                validation_loss,
-                int(fsdp_loss[1]),
-                int(fsdp_loss[2]),
-                100.0 * fsdp_loss[1] / fsdp_loss[2],
+        with torch.no_grad():
+            for samples, target in val_data_loader:
+                samples = samples.to(rank)
+                target = target.to(rank)
+
+                output = model(samples)
+
+                fsdp_loss[0] += F.nll_loss(
+                    output, target, reduction="sum"
+                ).item()  # sum up batch loss
+                pred = output.argmax(
+                    dim=1, keepdim=True
+                )  # get the index of the max log-probability
+                fsdp_loss[1] += pred.eq(target.view_as(pred)).sum().item()
+                fsdp_loss[2] += len(samples)
+                dist.reduce(fsdp_loss, 0, op=dist.ReduceOp.SUM)
+
+        if rank == 0:
+            validation_loss = fsdp_loss[0] / fsdp_loss[2]
+            print(
+                "Validation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n".format(
+                    validation_loss,
+                    int(fsdp_loss[1]),
+                    int(fsdp_loss[2]),
+                    100.0 * fsdp_loss[1] / fsdp_loss[2],
+                )
             )
-        )

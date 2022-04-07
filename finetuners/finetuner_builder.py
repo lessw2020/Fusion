@@ -29,7 +29,7 @@ class T5Tuner(FineTunerBase):
 
         print(f"wrapped model = {total_params}")
 
-    def model_step(self, batch, rank):
+    def model_step(self, rank, batch, forward_only=False):
         # print(f"--> in finetuner model step\n")
         lm_labels = batch["target_ids"]
         lm_labels[lm_labels[:, :] == self.tokenizer.pad_token_id] = -100
@@ -48,36 +48,47 @@ class T5Tuner(FineTunerBase):
 
         loss = outputs.get("loss")
         # logits = outputs.get("logits")
-        loss.backward()
+        if not forward_only:
+            loss.backward()
 
         return loss
 
-    def generative_step(self, batch):
+    def generative_step(self, rank, batch):
 
         t0 = time.time()
 
-        generated_ids = self.model.generate(
-            batch["source_ids"],
-            attention_mask=batch["source_mask"],
+        # move items to device
+        source_ids = batch["source_ids"].to(rank)
+        source_mask = batch["source_mask"].to(rank)
+        target_mask = batch["target_mask"].to(rank)
+        target_ids = batch["target_ids"].to(rank)
+
+        generated_ids = self.wrapped_model.generate(
+            source_ids,
+            attention_mask=source_mask,
             use_cache=True,
-            decoder_attention_mask=batch["target_mask"],
+            decoder_attention_mask=target_mask,
             max_length=150,
             num_beams=2,
             repetition_penalty=2.5,
             length_penalty=1.0,
             early_stopping=True,
         )
+
         preds = self.ids_to_clean_text(generated_ids)
-        target = self.ids_to_clean_text(batch["target_ids"])
+        target = self.ids_to_clean_text(target_ids)
 
         gen_time = (time.time() - t0) / batch["source_ids"].shape[0]
 
-        loss = self.model_step(batch)
+        loss = self.model_step(rank, batch, forward_only=True)
+        print(f"Val Loss = {loss}")
         base_metrics = {"val_loss": loss}
         summ_len = np.mean(list(map(len, generated_ids)))
-        base_metrics.update(
-            gen_time=gen_time, gen_len=summ_len, preds=preds, target=target
-        )
+        # base_metrics.update(
+        print(
+            f"val step = gen_time: {gen_time}, gen_len={summ_len}"
+        )  # todo -add rouge , preds=preds, target=target
+        # )
 
         return base_metrics
 
