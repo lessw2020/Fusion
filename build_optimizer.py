@@ -8,7 +8,7 @@ def build_optimizer(model, lr=0.003, verbose=True):
     built_optimizer = None
 
     if isinstance(model, FineTunerBase):
-        built_optimizer = optim.AdamW(model.model.parameters(), lr=lr)
+        built_optimizer = optim.AdamW(model.wrapped_model.parameters(), lr=lr)
         if verbose:
             print(f"Optimizer built for FineTuner instance")
     else:

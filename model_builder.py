@@ -80,7 +80,7 @@ def build_model_core(rank, cfg):
     if cfg.type == "finetuner":
         print(f"--> Loading finetuner model class")
         tunerModel = finetuners.get_finetuner(cfg)
-        tunerModel.to(rank)
+        tunerModel.wrapped_model.to(rank)
 
         return tunerModel
 

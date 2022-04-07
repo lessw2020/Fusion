@@ -1,6 +1,7 @@
 # handles training epochs, eval and prediction
 
 from turtle import color
+from finetuners.finetuner_builder import FineTunerBase
 import torch
 from typing import Iterable
 
@@ -8,6 +9,7 @@ import torch.distributed as dist
 
 import torch.nn.functional as F
 import tqdm
+import finetuners
 
 
 def train_one_epoch(
@@ -24,8 +26,15 @@ def train_one_epoch(
 ):
 
     """train one epoch"""
+    is_finetuner = False
+    iPointer = model  # class instance pointer...for fine tuner we will be shifting 'model' to the internal nn.Model
+
+    if isinstance(model, FineTunerBase):
+        is_finetuner = True
+        model = iPointer.wrapped_model
 
     model.train()
+
     inner_pbar = None
 
     if rank == 0:
@@ -39,33 +48,68 @@ def train_one_epoch(
     # if sampler:
     #   sampler.set_epoch(epoch)
 
-    for batch_idx, (samples, target) in enumerate(train_data_loader):
+    # TODO - design issue - finetuner class right now handles data prep vs Mnist and similar simply work with direct data
+    # this is_finetuner is a temp workaround but needs to be addressed in a more perm fashion
+    if is_finetuner:
+        print(f"Finetuning epoch")
+        for batch_idx, batch in enumerate(train_data_loader):
 
-        samples, target = samples.to(rank), target.to(rank)
+            optimizer.zero_grad()
 
-        optimizer.zero_grad()
+            print(batch.keys())
 
-        output = model(samples)
+            loss = None
 
-        if criterion:
-            loss = criterion(output, target)
-        else:
-            loss = F.nll_loss(output, target, reduction="sum")
+            outputs = iPointer.model_step(batch, rank)
 
-        loss.backward()
-        optimizer.step()
+            print(f"outputs_loss = {outputs}")
+            if batch_idx > 3:
+                break
+            # loss = None
+            # if labels is not None:
+            # loss_fct = nn.CrossEntropyLoss(ignore_index=-100)
+            # loss = loss_fct(lm_logits.view(-1, lm_logits.size(-1)), labels.view(-1))
 
-        fsdp_loss[0] += loss.item()
-        fsdp_loss[1] += len(samples)
+            # if not return_dict:
+            #    output = (lm_logits,) + decoder_outputs[1:] + encoder_outputs
+            #    return ((loss,) + output) if loss is not None else output
+            # loss = loss_fct(lm_logits.view(-1, lm_logits.size(-1)), labels.view(-1))
 
-        if profiler:
-            profiler.step()
+            if rank == 0:
+                inner_pbar.update(1)
+        loss = outputs
+        print(f"\n--> Loss from epoch = {loss}")
 
-        # reduce op
-        dist.reduce(fsdp_loss, 0, op=dist.ReduceOp.SUM)
+        return loss
 
-        if rank == 0:
-            inner_pbar.update(1)
+    else:
+        for batch_idx, (samples, target) in enumerate(train_data_loader):
+
+            samples, target = samples.to(rank), target.to(rank)
+
+            optimizer.zero_grad()
+
+            output = model(samples)
+
+            if criterion:
+                loss = criterion(output, target)
+            else:
+                loss = F.nll_loss(output, target, reduction="sum")
+
+            loss.backward()
+            optimizer.step()
+
+            fsdp_loss[0] += loss.item()
+            fsdp_loss[1] += len(samples)
+
+            if profiler:
+                profiler.step()
+
+            # reduce op
+            dist.reduce(fsdp_loss, 0, op=dist.ReduceOp.SUM)
+
+            if rank == 0:
+                inner_pbar.update(1)
 
     if rank == 0:
         inner_pbar.close()  # final update

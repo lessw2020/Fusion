@@ -8,6 +8,7 @@ from transformers import (
 import torch
 import time
 import numpy as np
+import nlp
 
 
 class FineTunerBase:
@@ -16,36 +17,33 @@ class FineTunerBase:
     pass
 
 
-class T5Tuner(torch.nn.Module, FineTunerBase):
+class T5Tuner(FineTunerBase):
     def __init__(self, cfg):
         super().__init__()
-        self.model = T5ForConditionalGeneration.from_pretrained(cfg.model_name)
-
-    def forward(
-        self,
-        input_ids,
-        attention_mask=None,
-        decoder_input_ids=None,
-        decoder_attention_mask=None,
-        lm_labels=None,
-    ):
-        return self.model(
-            input_ids,
-            attention_mask=attention_mask,
-            decoder_input_ids=decoder_input_ids,
-            decoder_attention_mask=decoder_attention_mask,
-            lm_labels=lm_labels,
+        self.wrapped_model = T5ForConditionalGeneration.from_pretrained(cfg.model_name)
+        self.tokenizer = T5Tokenizer.from_pretrained(cfg.model_name)
+        # self.rouge_metric = nlp.load_metric("rouge")
+        total_params = sum(
+            p.numel() for p in self.wrapped_model.parameters() if p.requires_grad
         )
 
-    def model_step(self, batch):
+        print(f"wrapped model = {total_params}")
+
+    def model_step(self, batch, rank):
+        print(f"--> in finetuner model step\n")
         lm_labels = batch["target_ids"]
         lm_labels[lm_labels[:, :] == self.tokenizer.pad_token_id] = -100
 
-        outputs = self(
-            input_ids=batch["source_ids"],
-            attention_mask=batch["source_mask"],
-            lm_labels=lm_labels,
-            decoder_attention_mask=batch["target_mask"],
+        source_ids = batch["source_ids"].to(rank)
+        source_mask = batch["source_mask"].to(rank)
+        target_ids = lm_labels.to(rank)
+        target_mask = batch["target_mask"].to(rank)
+
+        outputs = self.wrapped_model.forward(
+            input_ids=source_ids,
+            attention_mask=source_mask,
+            labels=target_ids,
+            decoder_attention_mask=target_mask,
         )
 
         loss = outputs[0]

@@ -244,20 +244,19 @@ def reactor_world_main(cfg=None):
     setup_world()
     # important - models must be placed onto device, then sharded
 
-    # dataloader_train, dataloader_val = build_datasets(cfg)
+    dataloader_train, dataloader_val = build_datasets(cfg)
 
     # loss_metric = build_criterion.get_criterion(cfg)
-    print(f"todo - skipping dataset builder for debugging...turn on before training")
+    # hf has metric internally...
+
     model = setup_model(cfg)
 
     optimizer = build_optimizer.build_optimizer(model)
     print(f"optimizer = {optimizer}")
-
     print(
-        "Todo - remove this..aborting for now as just making dataset and model and optimizer"
+        f"Todo - optimizer is being put on rank 0 for debugging only atm...remove this"
     )
-    return
-
+    # optimizer.to(rank)
     # lr_scheduler = build_scheduler.build_lr_scheduler(optimizer)
 
     # one training loop
@@ -287,7 +286,8 @@ def reactor_world_main(cfg=None):
             curr_epoch,
             max_norm=1.0,
         )
-
+        print("Todo - remove this..aborting after one epoch for debugging")
+        return
         # todo - step lr, step profiler?
 
         plasma.val_one_epoch(rank, world_size, model, dataloader_val)
