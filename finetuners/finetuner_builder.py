@@ -10,7 +10,13 @@ import time
 import numpy as np
 
 
-class T5Tuner(torch.nn.Module):
+class FineTunerBase:
+    """simple tagging base class to easily check for derived finetuners"""
+
+    pass
+
+
+class T5Tuner(torch.nn.Module, FineTunerBase):
     def __init__(self, cfg):
         super().__init__()
         self.model = T5ForConditionalGeneration.from_pretrained(cfg.model_name)

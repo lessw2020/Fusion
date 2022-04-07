@@ -250,11 +250,15 @@ def reactor_world_main(cfg=None):
     print(f"todo - skipping dataset builder for debugging...turn on before training")
     model = setup_model(cfg)
 
-    print("Todo - remove this..aborting for now as just making dataset and model")
+    optimizer = build_optimizer.build_optimizer(model)
+    print(f"optimizer = {optimizer}")
+
+    print(
+        "Todo - remove this..aborting for now as just making dataset and model and optimizer"
+    )
     return
 
-    optimizer = build_optimizer.build_optimizer(model)
-    lr_scheduler = build_scheduler.build_lr_scheduler(optimizer)
+    # lr_scheduler = build_scheduler.build_lr_scheduler(optimizer)
 
     # one training loop
     rank = int(os.getenv("RANK"))
