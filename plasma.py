@@ -60,9 +60,10 @@ def train_one_epoch(
 
             loss = None
 
-            outputs = iPointer.model_step(batch, rank)
+            loss = iPointer.model_step(batch, rank)
 
-            print(f"outputs_loss = {outputs}")
+            # optimizer
+
             if batch_idx > 3:
                 break
             # loss = None
@@ -77,7 +78,7 @@ def train_one_epoch(
 
             if rank == 0:
                 inner_pbar.update(1)
-        loss = outputs
+
         print(f"\n--> Loss from epoch = {loss}")
 
         return loss

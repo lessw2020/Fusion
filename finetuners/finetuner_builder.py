@@ -46,7 +46,9 @@ class T5Tuner(FineTunerBase):
             decoder_attention_mask=target_mask,
         )
 
-        loss = outputs[0]
+        loss = outputs.get("loss")
+        # logits = outputs.get("logits")
+        loss.backward()
 
         return loss
 
