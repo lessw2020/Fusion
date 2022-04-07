@@ -286,10 +286,11 @@ def reactor_world_main(cfg=None):
             curr_epoch,
             max_norm=1.0,
         )
-        print("Todo - remove this..aborting after one epoch for debugging")
-        return
-        # todo - step lr, step profiler?
-
+    # print("Todo - remove this..aborting after one epoch for debugging")
+    # return
+    # todo - step lr, step profiler?
+    print("todo - val is not enabled...fix this when ready")
+    if False:
         plasma.val_one_epoch(rank, world_size, model, dataloader_val)
 
         if 0 == int(os.getenv("RANK")):

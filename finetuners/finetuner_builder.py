@@ -30,7 +30,7 @@ class T5Tuner(FineTunerBase):
         print(f"wrapped model = {total_params}")
 
     def model_step(self, batch, rank):
-        print(f"--> in finetuner model step\n")
+        # print(f"--> in finetuner model step\n")
         lm_labels = batch["target_ids"]
         lm_labels[lm_labels[:, :] == self.tokenizer.pad_token_id] = -100
 

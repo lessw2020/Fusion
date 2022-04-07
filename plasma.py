@@ -56,15 +56,19 @@ def train_one_epoch(
 
             optimizer.zero_grad()
 
-            print(batch.keys())
+            # print(batch.keys())
 
             loss = None
 
             loss = iPointer.model_step(batch, rank)
 
-            # optimizer
+            optimizer.step()
 
-            if batch_idx > 3:
+            # optimizer
+            if rank == 0:
+                inner_pbar.update(1000)
+
+            if batch_idx > 9:
                 break
             # loss = None
             # if labels is not None:
@@ -76,10 +80,8 @@ def train_one_epoch(
             #    return ((loss,) + output) if loss is not None else output
             # loss = loss_fct(lm_logits.view(-1, lm_logits.size(-1)), labels.view(-1))
 
-            if rank == 0:
-                inner_pbar.update(1)
-
         print(f"\n--> Loss from epoch = {loss}")
+        inner_pbar.close()  # final update
 
         return loss
 
