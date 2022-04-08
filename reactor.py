@@ -46,7 +46,7 @@ import build_criterion
 
 from omegaconf import OmegaConf
 import model_builder
-import dataset_builder
+import build_dataloader
 
 import tqdm
 import colorama as cr
@@ -210,9 +210,9 @@ def setup_model(cfg=None):
 def build_datasets(cfg=None):
     """ "build training and val dataloaders from dataset"""
 
-    dataloader_training = dataset_builder.build_training_dataloader(cfg)
+    dataloader_training = build_dataloader.build_training_dataloader(cfg)
 
-    dataloader_val = dataset_builder.build_val_dataloader(cfg)
+    dataloader_val = build_dataloader.build_val_dataloader(cfg)
 
     if 0 == int(os.getenv("RANK")):
         print(f"Dataloaders all built!\n")
@@ -246,7 +246,7 @@ def reactor_world_main(cfg=None):
 
     dataloader_train, dataloader_val = build_datasets(cfg)
 
-    dataloader_test = dataset_builder.build_test_dataloader(cfg)
+    dataloader_test = build_dataloader.build_test_dataloader(cfg)
 
     # loss_metric = build_criterion.get_criterion(cfg)
     # hf has metric internally...

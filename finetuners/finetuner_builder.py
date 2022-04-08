@@ -120,13 +120,28 @@ class T5Tuner(FineTunerBase):
             early_stopping=True,
         )
         # preds = self.ids_to_clean_text(outputs)
-        target = self.ids_to_clean_text(batch["target_ids"])
-        clean_text = self.ids_to_clean_text(batch["source_ids"])
+        # target = self.ids_to_clean_text(batch["target_ids"])
+        # clean_text = self.ids_to_clean_text(batch["source_ids"])
 
-        decoded = [self.tokenizer.decode(ids) for ids in outputs]
+        decoded = [
+            self.tokenizer.decode(
+                ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
+            )
+            for ids in outputs
+        ]
 
-        texts = [self.tokenizer.decode(ids) for ids in clean_text]
-        targets = [self.tokenizer.decode(ids) for ids in target]
+        texts = [
+            self.tokenizer.decode(
+                ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
+            )
+            for ids in batch.get("source_ids")
+        ]
+        targets = [
+            self.tokenizer.decode(
+                ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
+            )
+            for ids in batch.get("target_ids")
+        ]
 
         for i in range(cfg.test_batch_size):
             lines = textwrap.wrap("WikiHow Text:\n%s\n" % texts[i], width=100)
