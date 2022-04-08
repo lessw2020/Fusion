@@ -185,3 +185,37 @@ def val_one_epoch(
                     100.0 * fsdp_loss[1] / fsdp_loss[2],
                 )
             )
+
+
+def test_one_epoch(
+    rank: int,
+    world_size: int,
+    model: torch.nn.Module,
+    test_data_loader: Iterable,
+    criterion=None,
+):
+    """validation of model"""
+    is_finetuner = False
+    iPointer = model  # class instance pointer...for fine tuner we will be shifting 'model' to the internal nn.Model
+
+    if isinstance(model, FineTunerBase):
+        is_finetuner = True
+        model = iPointer.wrapped_model
+
+    model.eval()
+
+    if rank == 0:
+        print(f"==> TEST set in process: \n")
+    if is_finetuner:
+        # test is really generation step...and maybe redundant - re-use val step?
+
+        with torch.no_grad():
+            print(f"in val fine tuner step")
+            for batch_idx, batch in enumerate(test_data_loader):
+
+                # batch = dict_keys(['source_ids', 'source_mask', 'target_ids', 'target_mask'])
+                iPointer.generative_step(rank, batch)
+
+                if batch_idx > 3:
+                    print(f"aborting after 3 mini in val step...remove")
+                    break

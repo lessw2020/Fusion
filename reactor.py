@@ -246,6 +246,9 @@ def reactor_world_main(cfg=None):
 
     dataloader_train, dataloader_val = build_datasets(cfg)
 
+    dataloader_test = dataset_builder.build_test_dataloader(cfg)
+    print(f"Test dataset has {len(dataloader_test)} entries")
+
     # loss_metric = build_criterion.get_criterion(cfg)
     # hf has metric internally...
 

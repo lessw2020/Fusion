@@ -167,3 +167,45 @@ def build_val_dataloader(cfg=None):
     print(f"Total validation samples = {len(dataloader_val)}\n")
 
     return dataloader_val
+
+
+def build_test_dataloader(cfg=None):
+    """validation dataset and dataloader"""
+    rank = int(os.getenv("RANK"))
+    world_size = int(os.getenv("WORLD_SIZE"))
+
+    val_transforms = build_val_transforms(cfg)
+
+    dataset_test = None
+    dataloader_test = None
+
+    if cfg.project == "wikihow":
+        tokenizer = None
+        from projects.wikihow.dataset import wikihow
+
+        if cfg.tokenizer == "t5":
+            tokenizer = T5Tokenizer.from_pretrained(cfg.model_name)
+        num_samples = (
+            cfg.num_val_samples
+        )  # todo - this is from inspecting the dataset...needs to be more dynamic
+
+        dataset_test = wikihow(
+            tokenizer=tokenizer,
+            type_path="test",
+            num_samples=num_samples,
+            input_length=cfg.max_input_length,
+            output_length=cfg.max_output_length,
+        )
+
+        dataloader_test = DataLoader(
+            dataset_test,
+            batch_size=cfg.batch_size,
+            drop_last=True,
+            shuffle=True,
+            num_workers=cfg.num_workers,
+        )
+    if 0 == rank:
+        print(f"\Test Dataloader built for {cfg.project}!")
+        print(f"Total Test samples = {len(dataloader_test)}\n")
+
+    return dataloader_test
