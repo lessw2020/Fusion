@@ -187,14 +187,14 @@ def val_one_epoch(
             )
 
 
-def test_one_epoch(
+def test_one_batch(
     rank: int,
     world_size: int,
     model: torch.nn.Module,
     test_data_loader: Iterable,
-    criterion=None,
+    cfg=None,
 ):
-    """validation of model"""
+    """test/predictions of model"""
     is_finetuner = False
     iPointer = model  # class instance pointer...for fine tuner we will be shifting 'model' to the internal nn.Model
 
@@ -214,7 +214,7 @@ def test_one_epoch(
             for batch_idx, batch in enumerate(test_data_loader):
 
                 # batch = dict_keys(['source_ids', 'source_mask', 'target_ids', 'target_mask'])
-                iPointer.generative_step(rank, batch)
+                iPointer.predict_step(rank, batch, cfg)
 
                 if batch_idx > 3:
                     print(f"aborting after 3 mini in val step...remove")

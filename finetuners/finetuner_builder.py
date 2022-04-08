@@ -9,6 +9,7 @@ import torch
 import time
 import numpy as np
 import nlp
+import textwrap
 
 
 class FineTunerBase:
@@ -92,9 +93,48 @@ class T5Tuner(FineTunerBase):
 
         return base_metrics
 
-    def predict_step(self, rank, batch):
+    def predict_step(
+        self,
+        rank,
+        batch,
+        cfg,
+    ):
         """prediction from test set"""
         self.wrapped_model.eval()
+
+        # move items to device
+        source_ids = batch["source_ids"].to(rank)
+        source_mask = batch["source_mask"].to(rank)
+        target_mask = batch["target_mask"].to(rank)
+        target_ids = batch["target_ids"].to(rank)
+
+        outputs = self.wrapped_model.generate(
+            source_ids,
+            attention_mask=source_mask,
+            use_cache=True,
+            decoder_attention_mask=target_mask,
+            max_length=150,
+            num_beams=2,
+            repetition_penalty=2.5,
+            length_penalty=1.0,
+            early_stopping=True,
+        )
+        # preds = self.ids_to_clean_text(outputs)
+        target = self.ids_to_clean_text(batch["target_ids"])
+        clean_text = self.ids_to_clean_text(batch["source_ids"])
+
+        decoded = [self.tokenizer.decode(ids) for ids in outputs]
+
+        texts = [self.tokenizer.decode(ids) for ids in clean_text]
+        targets = [self.tokenizer.decode(ids) for ids in target]
+
+        for i in range(cfg.test_batch_size):
+            lines = textwrap.wrap("WikiHow Text:\n%s\n" % texts[i], width=100)
+            print("\n".join(lines))
+            print("\nActual Summary: %s" % targets[i])
+            print("\nPredicted Summary: %s" % decoded[i])
+
+            print("------------------------\n")
 
     def ids_to_clean_text(self, generated_ids):
         gen_text = self.tokenizer.batch_decode(

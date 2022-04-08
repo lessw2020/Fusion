@@ -247,7 +247,6 @@ def reactor_world_main(cfg=None):
     dataloader_train, dataloader_val = build_datasets(cfg)
 
     dataloader_test = dataset_builder.build_test_dataloader(cfg)
-    print(f"Test dataset has {len(dataloader_test)} entries")
 
     # loss_metric = build_criterion.get_criterion(cfg)
     # hf has metric internally...
@@ -294,7 +293,7 @@ def reactor_world_main(cfg=None):
         # return
         # todo - step lr, step profiler?
 
-        plasma.val_one_epoch(rank, world_size, model, dataloader_val)
+        # plasma.val_one_epoch(rank, world_size, model, dataloader_val)
 
         if 0 == int(os.getenv("RANK")):
             print(cr.Fore.GREEN + f"epoch {curr_epoch} completed ")
@@ -305,6 +304,9 @@ def reactor_world_main(cfg=None):
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
         print(cr.Fore.LIGHTGREEN_EX + f"Training time {total_time_str}")
+
+    # test step
+    plasma.test_one_batch(rank, world_size, model, dataloader_test, cfg=cfg)
 
     # teardown()
     print(
@@ -338,6 +340,7 @@ class WikiHow(FusionConfig):
     max_output_length = 150
     num_workers = 4
     criterion = "rouge"
+    test_batch_size: int = 4
 
 
 @dataclass
