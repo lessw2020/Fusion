@@ -92,6 +92,10 @@ class T5Tuner(FineTunerBase):
 
         return base_metrics
 
+    def predict_step(self, rank, batch):
+        """prediction from test set"""
+        self.wrapped_model.eval()
+
     def ids_to_clean_text(self, generated_ids):
         gen_text = self.tokenizer.batch_decode(
             generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
